@@ -70,6 +70,50 @@ class Moderateur extends utilisateur {
     public function __construct($id, $username, $email, $password, $createdat, $lastLogin) {
         parent::__construct($id, $username, $email, $password, $createdat, $lastLogin);
     }
+    
+    ///////////////////////////// GESTION DES COMMENTAIRES ///////////////////
+    
+    // Approuver un commentaire
+    public function approuvercommentaire(Collection $collection, $commentId): bool {
+        return $collection->approuverCommentaire($commentId);
+    }
+    
+    // Supprimer un commentaire
+    public function supprimercommentaire(Collection $collection, $commentId): bool {
+        return $collection->supprimerCommentaire($commentId);
+    }
+    
+    ///////////////////////////// GESTION DES ARTICLES ///////////////////
+    
+    // Publier un article (changer son statut à "publié")
+    public function publierarticle(Collection $collection, $articleId): bool {
+        $article = $collection->getArticleById($articleId);
+        if ($article) {
+            $article->setStatus('publié');
+            $article->setPublishedAt(date('Y-m-d'));
+            $article->setUpdatedAt(date('Y-m-d'));
+            return $collection->modifierarticle($article);
+        }
+        return false;
+    }
+    
+    // Supprimer n'importe quel article
+    public function supprimerarticlequelconque(Collection $collection, $articleId): bool {
+        return $collection->supprimerArticleMod($articleId);
+    }
+    
+    ///////////////////////////// GESTION DES CATÉGORIES ///////////////////
+    
+    // Créer une catégorie
+    public function creercategorie(Collection $collection, $nom, $description, $parent = null): bool {
+        $categorie = $collection->creerCategorie($nom, $description, $parent);
+        return ($categorie !== false);
+    }
+    
+    // Supprimer une catégorie
+    public function supprimercategorie(Collection $collection, $categorieId): bool {
+        return $collection->supprimerCategorie($categorieId);
+    }
 }
 
 class auteur extends utilisateur {
@@ -170,6 +214,111 @@ final class Admin extends Moderateur {
     public function setIsSuperAdmin($s): void { 
         $this->isSuperAdmin = $s;
     }
+    
+    ///////////////////////////// GESTION DES UTILISATEURS ///////////////////
+    
+    // Créer un nouvel utilisateur
+    public function creerutilisateur(Collection $collection, $username, $email, $password, $role, $dataSupp = null): bool {
+        // Trouver le prochain ID
+        $users = $collection->getUsers();
+        $maxId = 0;
+        foreach ($users as $user) {
+            if ($user->getId() > $maxId) {
+                $maxId = $user->getId();
+            }
+        }
+        $nouvelId = $maxId + 1;
+        
+        $date = date('Y-m-d');
+        
+        // Créer l'utilisateur selon le rôle
+        switch ($role) {
+            case 'auteur':
+                $bio = $dataSupp ?? "Nouvel auteur";
+                $nouvelUser = new auteur($nouvelId, $username, $email, $password, $date, $date, $bio);
+                break;
+            case 'editeur':
+                $niveau = $dataSupp ?? "Niveau 1";
+                $nouvelUser = new Editeur($nouvelId, $username, $email, $password, $date, $date, $niveau);
+                break;
+            case 'moderateur':
+                $nouvelUser = new Moderateur($nouvelId, $username, $email, $password, $date, $date);
+                break;
+            case 'admin':
+                $isSuper = isset($dataSupp) ? (bool)$dataSupp : false;
+                $nouvelUser = new Admin($nouvelId, $username, $email, $password, $date, $date, $isSuper);
+                break;
+            default:
+                return false;
+        }
+        
+        return $collection->ajouterutilisateur($nouvelUser);
+    }
+    
+    // Modifier un utilisateur
+    public function modifierutilisateur(utilisateur $user, $newUsername = null, $newEmail = null, $newPassword = null): bool {
+        if ($newUsername !== null) {
+            $user->setUsername($newUsername);
+        }
+        
+        if ($newEmail !== null) {
+            $user->setEmail($newEmail);
+        }
+        
+        if ($newPassword !== null) {
+            $user->setPassword($newPassword);
+        }
+        
+        $user->setLastLogin(date('Y-m-d'));
+        return true;
+    }
+    
+    // Supprimer un utilisateur
+    public function supprimerutilisateur(Collection $collection, $userId): bool {
+        return $collection->supprimerutilisateur($userId);
+    }
+    
+    // Changer le rôle d'un utilisateur
+    public function changerroleutilisateur(Collection $collection, $userId, $nouveauRole, $dataSupp = null): bool {
+        $user = $collection->getUserById($userId);
+        
+        if (!$user) {
+            return false;
+        }
+        
+        // Sauvegarder les données
+        $username = $user->getUsername();
+        $email = $user->getEmail();
+        $password = $user->getPassword();
+        $createdat = $user->getCreatedat();
+        $lastLogin = $user->getLastLogin();
+        
+        // Supprimer l'ancien utilisateur
+        $collection->supprimerutilisateur($userId);
+        
+        // Créer le nouvel utilisateur avec le nouveau rôle
+        switch ($nouveauRole) {
+            case 'auteur':
+                $bio = $dataSupp ?? "Bio par défaut";
+                $nouvelUser = new auteur($userId, $username, $email, $password, $createdat, $lastLogin, $bio);
+                break;
+            case 'editeur':
+                $niveau = $dataSupp ?? "Niveau 1";
+                $nouvelUser = new Editeur($userId, $username, $email, $password, $createdat, $lastLogin, $niveau);
+                break;
+            case 'moderateur':
+                $nouvelUser = new Moderateur($userId, $username, $email, $password, $createdat, $lastLogin);
+                break;
+            case 'admin':
+                $isSuper = isset($dataSupp) ? (bool)$dataSupp : false;
+                $nouvelUser = new Admin($userId, $username, $email, $password, $createdat, $lastLogin, $isSuper);
+                break;
+            default:
+                return false;
+        }
+        
+        return $collection->ajouterutilisateur($nouvelUser);
+    }
 }
 
 class Article {
@@ -182,6 +331,7 @@ class Article {
     private string $createdAt;
     private ?string $publishedAt;   
     private string $updatedAt;
+    private array $categories = [];
 
     public function __construct(int $id, string $title, string $content, string $excerpt, string $status, utilisateur $auteur, string $createdAt, ?string $publishedAt, string $updatedAt) {
         $this->id = $id;
@@ -255,9 +405,32 @@ class Article {
         $this->updatedAt = $u; 
     }
     
-  
+    // Méthodes simplifiées
     
-  
+    // Ajouter une catégorie
+    public function addCategorie(Categorie $categorie): void {
+        $this->categories[] = $categorie;
+    }
+    
+    // Retirer une catégorie
+    public function removeCategorie(Categorie $categorie): void {
+        foreach ($this->categories as $key => $cat) {
+            if ($cat->getId() === $categorie->getId()) {
+                unset($this->categories[$key]);
+                break;
+            }
+        }
+    }
+    
+    // Obtenir les catégories
+    public function getCategories(): array {
+        return $this->categories;
+    }
+    
+    // Obtenir les commentaires
+    public function getComments(Collection $collection): array {
+        return $collection->getCommentsByArticle($this->id);
+    }
 }
 
 class Categorie {
@@ -314,17 +487,65 @@ class Categorie {
     public function setCreatedAt($c): void {
         $this->createdAt = $c;
     }
+    
+    // Méthodes simplifiées
+    
+    // Obtenir le parent (objet)
+    public function getParentObject(Collection $collection): ?Categorie {
+        if ($this->parent === null) {
+            return null;
+        }
+        
+        return $collection->getCategorieByName($this->parent);
+    }
+    
+    // Obtenir l'arbre
+    public function getTree(Collection $collection): array {
+        $tree = [];
+        $categories = $collection->getCategories();
+        
+        foreach ($categories as $cat) {
+            if ($cat->getParent() === $this->name) {
+                $tree[] = $cat;
+            }
+        }
+        
+        return $tree;
+    }
+    
+    // Obtenir les articles
+    public function getArticles(Collection $collection): array {
+        $articles = [];
+        $allArticles = $collection->getArticles();
+        
+        foreach ($allArticles as $article) {
+            foreach ($article->getCategories() as $cat) {
+                if ($cat->getId() === $this->id) {
+                    $articles[] = $article;
+                    break;
+                }
+            }
+        }
+        
+        return $articles;
+    }
 }
 
 class Commentaire {
     private int $id;
     private string $contenu;
     private string $createdAt;
+    private bool $approuve;
+    private ?int $articleId;
+    private ?int $userId;
 
-    public function __construct(int $id, string $contenu, string $createdAt) {
+    public function __construct(int $id, string $contenu, string $createdAt, bool $approuve = true, ?int $articleId = null, ?int $userId = null) {
         $this->id = $id;
         $this->contenu = $contenu;
         $this->createdAt = $createdAt;
+        $this->approuve = $approuve;
+        $this->articleId = $articleId;
+        $this->userId = $userId;
     }
 
     public function getId(): int {
@@ -338,6 +559,18 @@ class Commentaire {
     public function getCreatedAt(): string {
         return $this->createdAt;
     }
+    
+    public function getApprouve(): bool {
+        return $this->approuve;
+    }
+    
+    public function getArticleId(): ?int {
+        return $this->articleId;
+    }
+    
+    public function getUserId(): ?int {
+        return $this->userId;
+    }
 
     public function setId(int $id): void {
         $this->id = $id;
@@ -349,6 +582,24 @@ class Commentaire {
    
     public function setCreatedAt(string $createdAt): void {
         $this->createdAt = $createdAt;
+    }
+    
+    public function setApprouve(bool $approuve): void {
+        $this->approuve = $approuve;
+    }
+    
+    public function setArticleId(?int $articleId): void {
+        $this->articleId = $articleId;
+    }
+    
+    public function setUserId(?int $userId): void {
+        $this->userId = $userId;
+    }
+    
+    
+    public static function addComment(Collection $collection, string $contenu, int $articleId, ?int $userId = null): bool {
+        $comment = $collection->ajoutercommentaire($contenu, $articleId, $userId);
+        return $comment !== null;
     }
 }
 ?>

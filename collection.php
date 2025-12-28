@@ -11,6 +11,7 @@ class Collection {
         $auteur1 = new auteur(1, "salma", "salma@gmail.com", "1234", "2024-01-01", "2025-12-25", "Je suis développeuse passionnée par PHP et les nouvelles technologies.");
         $auteur2 = new auteur(4, "mohamed", "mohamed@gmail.com", "abcd", "2024-03-10", "2025-12-20", "Journaliste tech spécialisé en développement web.");
         
+        $moderateur = new Moderateur(5, "moderateur", "mod@mail.com", "modpass", "2024-01-10", "2025-12-20");
      
         $articles = [
             new Article(1, "Introduction à PHP", 
@@ -41,26 +42,41 @@ class Collection {
                 $auteur->creerermonarticle($article);
             }
         }
+        
+        // Créer des catégories
+        $technologie = new Categorie(1, "Technologie", "Articles sur la technologie et l'innovation numérique", "2024-01-01");
+        $programmation = new Categorie(2, "Programmation", "Articles de programmation et développement logiciel", "2024-01-02", "Technologie");
+        $science = new Categorie(3, "Science", "Articles scientifiques et découvertes récentes", "2024-01-03");
+        $webdev = new Categorie(4, "Développement Web", "Développement web et mobile, frameworks et bonnes pratiques", "2024-01-04", "Programmation");
+        
+        // Associer des catégories aux articles
+        $articles[0]->addCategorie($technologie);
+        $articles[0]->addCategorie($programmation);
+        $articles[1]->addCategorie($programmation);
+        $articles[1]->addCategorie($webdev);
+        $articles[2]->addCategorie($programmation);
+        $articles[3]->addCategorie($webdev);
 
         $this->storage = [
             'users' => [
                 $auteur1,
                 new Editeur(2, "sara", "sara@gmail.com", "1348", "2024-02-15", "2025-12-24", "Niveau 2"),
                 new Admin(3, "admin", "admin@gmail.com", "123", "2023-12-01", "2025-12-25", true),
-                $auteur2
+                $auteur2,
+                $moderateur
             ],
             'categories' => [
-                new Categorie(1, "Technologie", "Articles sur la technologie et l'innovation numérique", "2024-01-01"),
-                new Categorie(2, "Programmation", "Articles de programmation et développement logiciel", "2024-01-02", "Technologie"),
-                new Categorie(3, "Science", "Articles scientifiques et découvertes récentes", "2024-01-03"),
-                new Categorie(4, "Développement Web", "Développement web et mobile, frameworks et bonnes pratiques", "2024-01-04")
+                $technologie,
+                $programmation,
+                $science,
+                $webdev
             ],
             'articles' => $articles,
             'comments' => [
-                new Commentaire(1, "Excellent article pour commencer avec PHP ! Très bien expliqué.", "2024-12-02"),
-                new Commentaire(2, "Très bon tutoriel sur la POO, merci pour ces explications claires !", "2024-12-12"),
-                new Commentaire(3, "J'attends avec impatience la suite sur les design patterns", "2024-12-16"),
-                new Commentaire(4, "Article très complet sur les fonctionnalités avancées de PHP", "2024-12-22")
+                new Commentaire(1, "Excellent article pour commencer avec PHP ! Très bien expliqué.", "2024-12-02", true, 1, null),
+                new Commentaire(2, "Très bon tutoriel sur la POO, merci pour ces explications claires !", "2024-12-12", true, 2, null),
+                new Commentaire(3, "J'attends avec impatience la suite sur les design patterns", "2024-12-16", false, 3, 4),
+                new Commentaire(4, "Article très complet sur les fonctionnalités avancées de PHP", "2024-12-22", true, 4, 1)
             ]
         ];
     }
@@ -92,7 +108,36 @@ class Collection {
         return $this->storage['comments'] ?? [];
     }
     
-    // Méthode pour obtenir les articles publiés
+    public function getCommentsApprouves() {
+        $commentsApprouves = [];
+        foreach ($this->storage['comments'] as $comment) {
+            if ($comment->getApprouve()) {
+                $commentsApprouves[] = $comment;
+            }
+        }
+        return $commentsApprouves;
+    }
+    
+    public function getCommentsEnAttente() {
+        $commentsEnAttente = [];
+        foreach ($this->storage['comments'] as $comment) {
+            if (!$comment->getApprouve()) {
+                $commentsEnAttente[] = $comment;
+            }
+        }
+        return $commentsEnAttente;
+    }
+    
+    public function getCommentsByArticle($articleId) {
+        $commentsArticle = [];
+        foreach ($this->storage['comments'] as $comment) {
+            if ($comment->getArticleId() === $articleId) {
+                $commentsArticle[] = $comment;
+            }
+        }
+        return $commentsArticle;
+    }
+    
     public function getArticlesPublies() {
         $articlesPublies = [];
         foreach ($this->storage['articles'] as $article) {
@@ -103,7 +148,6 @@ class Collection {
         return $articlesPublies;
     }
     
-    // Méthode pour obtenir un article par son ID
     public function getArticleById($id) {
         foreach ($this->storage['articles'] as $article) {
             if ($article->getId() === $id) {
@@ -113,7 +157,6 @@ class Collection {
         return null;
     }
     
-    // Méthode pour obtenir les articles d'un auteur spécifique
     public function getArticlesByAuthor($authorId) {
         $authorArticles = [];
         foreach ($this->storage['articles'] as $article) {
@@ -124,7 +167,6 @@ class Collection {
         return $authorArticles;
     }
     
-    // Méthode pour obtenir un utilisateur par ID
     public function getUserById($id) {
         foreach ($this->storage['users'] as $user) {
             if ($user->getId() === $id) {
@@ -134,7 +176,302 @@ class Collection {
         return null;
     }
     
-    /////////////////////////////login //////////////////////////////
+    public function getUserByEmail($email) {
+        foreach ($this->storage['users'] as $user) {
+            if ($user->getEmail() === $email) {
+                return $user;
+            }
+        }
+        return null;
+    }
+    
+    // Méthodes simples pour catégories
+    
+    public function getCategorieById($id) {
+        foreach ($this->storage['categories'] as $categorie) {
+            if ($categorie->getId() === $id) {
+                return $categorie;
+            }
+        }
+        return null;
+    }
+    
+    public function getCategorieByName($name) {
+        foreach ($this->storage['categories'] as $categorie) {
+            if ($categorie->getName() === $name) {
+                return $categorie;
+            }
+        }
+        return null;
+    }
+    
+    // Associer catégorie à article
+    public function associerCategorieAArticle($articleId, $categorieId) {
+        $article = $this->getArticleById($articleId);
+        $categorie = $this->getCategorieById($categorieId);
+        
+        if ($article && $categorie) {
+            $article->addCategorie($categorie);
+            return true;
+        }
+        return false;
+    }
+    
+    // Dissocier catégorie d'article
+    public function dissocierCategorieDeArticle($articleId, $categorieId) {
+        $article = $this->getArticleById($articleId);
+        $categorie = $this->getCategorieById($categorieId);
+        
+        if ($article && $categorie) {
+            $article->removeCategorie($categorie);
+            return true;
+        }
+        return false;
+    }
+    
+    // Obtenir catégories d'article
+    public function getCategoriesDeArticle($articleId) {
+        $article = $this->getArticleById($articleId);
+        return $article ? $article->getCategories() : [];
+    }
+    
+    // Obtenir articles d'une catégorie
+    public function getArticlesDeCategorie($categorieId) {
+        $categorie = $this->getCategorieById($categorieId);
+        return $categorie ? $categorie->getArticles($this) : [];
+    }
+    
+    // Afficher arbre des catégories
+    public function displayArbreCategories() {
+        $categories = $this->getCategories();
+        
+        echo "=== ARBRE DES CATÉGORIES ===\n";
+        
+        foreach ($categories as $cat) {
+            if ($cat->getParent() === null) {
+                $this->displayCategorie($cat, 0);
+            }
+        }
+    }
+    
+    private function displayCategorie($categorie, $niveau) {
+        $prefix = str_repeat('  ', $niveau);
+        echo $prefix . "- " . $categorie->getName() . " (ID: " . $categorie->getId() . ")\n";
+        
+        foreach ($this->getCategories() as $cat) {
+            if ($cat->getParent() === $categorie->getName()) {
+                $this->displayCategorie($cat, $niveau + 2);
+            }
+        }
+    }
+    
+    // Gestion des utilisateurs
+    
+    public function ajouterutilisateur(utilisateur $user) {
+        $this->storage['users'][] = $user;
+        return true;
+    }
+    
+    public function supprimerutilisateur($userId) {
+        foreach ($this->storage['users'] as $key => $user) {
+            if ($user->getId() === $userId) {
+                if ($this->current_user && $this->current_user->getId() === $userId) {
+                    return false;
+                }
+                
+                if ($user instanceof auteur) {
+                    $articlesASupprimer = [];
+                    foreach ($this->storage['articles'] as $articleKey => $article) {
+                        if ($article->getAuteur()->getId() === $userId) {
+                            $articlesASupprimer[] = $articleKey;
+                        }
+                    }
+                    
+                    foreach ($articlesASupprimer as $articleKey) {
+                        unset($this->storage['articles'][$articleKey]);
+                    }
+                    $this->storage['articles'] = array_values($this->storage['articles']);
+                }
+                
+                unset($this->storage['users'][$key]);
+                $this->storage['users'] = array_values($this->storage['users']);
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    public function mettreajourutilisateur(utilisateur $updatedUser) {
+        foreach ($this->storage['users'] as $key => $user) {
+            if ($user->getId() === $updatedUser->getId()) {
+                $this->storage['users'][$key] = $updatedUser;
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    // Gestion des commentaires
+    
+    public function ajoutercommentaire($contenu, $articleId, $userId = null) {
+        $comments = $this->storage['comments'];
+        $maxId = 0;
+        foreach ($comments as $comment) {
+            if ($comment->getId() > $maxId) {
+                $maxId = $comment->getId();
+            }
+        }
+        $nouvelId = $maxId + 1;
+        
+        $userCommentId = null;
+        if ($userId) {
+            $userCommentId = $userId;
+        } elseif ($this->current_user) {
+            $userCommentId = $this->current_user->getId();
+        }
+        
+        $approuve = ($this->current_user !== null);
+        
+        $commentaire = new Commentaire(
+            $nouvelId,
+            $contenu,
+            date('Y-m-d'),
+            $approuve,
+            $articleId,
+            $userCommentId
+        );
+        
+        $this->storage['comments'][] = $commentaire;
+        return $commentaire;
+    }
+    
+    public function approuverCommentaire($commentId) {
+        foreach ($this->storage['comments'] as $comment) {
+            if ($comment->getId() === $commentId) {
+                $comment->setApprouve(true);
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    public function supprimerCommentaire($commentId) {
+        foreach ($this->storage['comments'] as $key => $comment) {
+            if ($comment->getId() === $commentId) {
+                unset($this->storage['comments'][$key]);
+                $this->storage['comments'] = array_values($this->storage['comments']);
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    // Gestion des catégories
+    
+    public function creerCategorie($nom, $description, $parent = null) {
+        foreach ($this->storage['categories'] as $categorie) {
+            if ($categorie->getName() === $nom) {
+                return false;
+            }
+        }
+        
+        if ($parent !== null) {
+            $parentExiste = false;
+            foreach ($this->storage['categories'] as $categorie) {
+                if ($categorie->getName() === $parent) {
+                    $parentExiste = true;
+                    break;
+                }
+            }
+            if (!$parentExiste) {
+                return false;
+            }
+        }
+        
+        $categories = $this->storage['categories'];
+        $maxId = 0;
+        foreach ($categories as $categorie) {
+            if ($categorie->getId() > $maxId) {
+                $maxId = $categorie->getId();
+            }
+        }
+        $nouvelId = $maxId + 1;
+        
+        $categorie = new Categorie(
+            $nouvelId,
+            $nom,
+            $description,
+            date('Y-m-d'),
+            $parent
+        );
+        
+        $this->storage['categories'][] = $categorie;
+        return $categorie;
+    }
+    
+    public function supprimerCategorie($categorieId) {
+        foreach ($this->storage['categories'] as $key => $categorie) {
+            if ($categorie->getId() === $categorieId) {
+                $hasChildren = false;
+                foreach ($this->storage['categories'] as $c) {
+                    if ($c->getParent() === $categorie->getName()) {
+                        $hasChildren = true;
+                        break;
+                    }
+                }
+                
+                if ($hasChildren) {
+                    return false;
+                }
+                
+                unset($this->storage['categories'][$key]);
+                $this->storage['categories'] = array_values($this->storage['categories']);
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    // Gestion des articles (modérateurs)
+    
+    public function supprimerArticleMod($articleId) {
+        foreach ($this->storage['articles'] as $key => $article) {
+            if ($article->getId() === $articleId) {
+                $author = $article->getAuteur();
+                if ($author instanceof auteur) {
+                    $author->supprimermonarticle($articleId);
+                }
+                
+                unset($this->storage['articles'][$key]);
+                $this->storage['articles'] = array_values($this->storage['articles']);
+                
+                $this->supprimerCommentairesArticle($articleId);
+                
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    private function supprimerCommentairesArticle($articleId) {
+        $commentairesASupprimer = [];
+        foreach ($this->storage['comments'] as $key => $comment) {
+            if ($comment->getArticleId() === $articleId) {
+                $commentairesASupprimer[] = $key;
+            }
+        }
+        
+        foreach ($commentairesASupprimer as $key) {
+            unset($this->storage['comments'][$key]);
+        }
+        
+        if (!empty($commentairesASupprimer)) {
+            $this->storage['comments'] = array_values($this->storage['comments']);
+        }
+    }
+    
+    // Login/logout
+    
     public function login($email, $password) {
         if (empty($email) || empty($password)) {
             return false;
@@ -148,19 +485,19 @@ class Collection {
         }
         return false;
     }
-   /////////////////////////////logout///////////////////////////
+   
     public function logout() {
         $this->current_user = null;
     } 
-     /////////////////////////////trouverutilisateurcurrent///////////////////////////
+     
     public function getCurrentUser() {
         return $this->current_user;
     }
-    ////////////////////////////estceque utilisateur est connecter maintenant///////////////////////////
+    
     public function isLoggedIn() {
         return $this->current_user !== null; 
     }
-      ////////////////////////////chkon had utilisateur li hna role /////////////////////
+      
     public function getCurrentUserRole() {
         if (!$this->current_user) {
             return null;
@@ -173,14 +510,14 @@ class Collection {
         
         return "Utilisateur";
     }
-   /////////////////////////  ajouter un nouvel article/////////////////////
-    
+   
+   // Gestion des articles
+   
     public function ajouterarticle(Article $article) {
         if (!$this->current_user instanceof auteur) {
             return false;
         }
         $this->storage['articles'][] = $article;
-        
         
         $author = $article->getAuteur();
         if ($author instanceof auteur) {
@@ -189,20 +526,18 @@ class Collection {
         
         return true;
     }
-    /////////////////////////  modifir  article/////////////////////
-   
+    
     public function modifierarticle(Article $updatedArticle) {
-       
         $currentUser = $this->current_user;
         $articleAuthor = $updatedArticle->getAuteur();
-     if (!$currentUser instanceof auteur || $currentUser->getId() !== $articleAuthor->getId()) {
+        
+        if (!$currentUser instanceof auteur || $currentUser->getId() !== $articleAuthor->getId()) {
             return false;
         }
         
         foreach ($this->storage['articles'] as $key => $article) {
             if ($article->getId() === $updatedArticle->getId()) {
                 $this->storage['articles'][$key] = $updatedArticle;
-                
                 
                 $author = $updatedArticle->getAuteur();
                 if ($author instanceof auteur) {
@@ -214,10 +549,8 @@ class Collection {
         }
         return false;
     }
-    /////////////////////////  supprime article /////////////
-  
+    
     public function supprimerarticle($articleId) {
-       
         $article = $this->getArticleById($articleId);
         if (!$article) {
             return false;
@@ -226,18 +559,15 @@ class Collection {
         $currentUser = $this->current_user;
         $articleAuthor = $article->getAuteur();
         
-   
         if (!$currentUser instanceof auteur || $currentUser->getId() !== $articleAuthor->getId()) {
             return false;
         }
         
         foreach ($this->storage['articles'] as $key => $article) {
             if ($article->getId() === $articleId) {
-              
                 unset($this->storage['articles'][$key]);
                 $this->storage['articles'] = array_values($this->storage['articles']);
                 
-           
                 $author = $article->getAuteur();
                 if ($author instanceof auteur) {
                     $author->supprimermonarticle($articleId);
@@ -248,8 +578,6 @@ class Collection {
         }
         return false;
     }
-    
-    
 }
 
 function displayUsers() {
@@ -257,25 +585,27 @@ function displayUsers() {
     $users = $collection->getUsers();
     
     echo "=== LISTE DES UTILISATEURS ===\n";
-    echo str_repeat("=", 80) . "\n";
-    printf("%-5s %-15s %-25s %-15s %-10s\n", "ID", "Username", "Email", "Password", "Rôle");
-    echo str_repeat("-", 80) . "\n";
+    echo str_repeat("=", 100) . "\n";
+    printf("%-5s %-15s %-25s %-15s %-10s %-15s\n", "ID", "Username", "Email", "Password", "Rôle", "Inscrit le");
+    echo str_repeat("-", 100) . "\n";
     
     foreach ($users as $user) {
         $role = "";
         
         if ($user instanceof Admin) $role = "Admin";
         elseif ($user instanceof Editeur) $role = "Editeur";
+        elseif ($user instanceof Moderateur) $role = "Moderateur";
         elseif ($user instanceof auteur) $role = "Auteur";
         
-        printf("%-5d %-15s %-25s %-15s %-10s\n", 
+        printf("%-5d %-15s %-25s %-15s %-10s %-15s\n", 
                $user->getId(), 
                $user->getUsername(), 
                $user->getEmail(), 
                str_repeat("*", strlen($user->getPassword())),
-               $role);
+               $role,
+               $user->getCreatedat());
     }
-    echo str_repeat("=", 80) . "\n";
+    echo str_repeat("=", 100) . "\n";
     echo "Total: " . count($users) . " utilisateur(s)\n\n";
 }
 
@@ -342,7 +672,6 @@ function displayArticleDetail($articleId) {
         return;
     }
     
-    // Vérifier si l'article est publié ou si l'utilisateur est connecté
     if ($article->getStatus() !== 'publié' && !$collection->isLoggedIn()) {
         echo "\n Cet article n'est pas disponible publiquement.\n";
         echo "Connectez-vous pour y accéder.\n\n";
@@ -364,6 +693,28 @@ function displayArticleDetail($articleId) {
     echo "Extrait: " . $article->getExcerpt() . "\n";
     echo str_repeat("-", 50) . "\n";
     echo "Contenu: " . $article->getContent() . "\n";
+    
+    // Catégories
+    $categories = $article->getCategories();
+    if (!empty($categories)) {
+        echo str_repeat("-", 50) . "\n";
+        echo "CATÉGORIES:\n";
+        foreach ($categories as $cat) {
+            echo "  - " . $cat->getName() . "\n";
+        }
+    }
+    
+    // Commentaires
+    $comments = $collection->getCommentsByArticle($articleId);
+    if (!empty($comments)) {
+        echo str_repeat("-", 50) . "\n";
+        echo "COMMENTAIRES (" . count($comments) . "):\n";
+        foreach ($comments as $comment) {
+            $approuve = $comment->getApprouve() ? "✓" : "✗";
+            echo "  [$approuve] " . $comment->getContenu() . " [" . $comment->getCreatedAt() . "]\n";
+        }
+    }
+    
     echo str_repeat("=", 50) . "\n\n";
 }
 
@@ -395,24 +746,58 @@ function displayAuthorArticles($authorId) {
     echo "Total: " . count($authorArticles) . " article(s)\n\n";
 }
 
-function displayComments() {
+function displayComments($showAll = false) {
     $collection = Collection::getInstance();
-    $comments = $collection->getComments();
+    
+    if ($showAll && $collection->isLoggedIn()) {
+        $comments = $collection->getComments();
+        $title = "TOUS LES COMMENTAIRES";
+    } else {
+        $comments = $collection->getCommentsApprouves();
+        $title = "COMMENTAIRES";
+    }
+    
+    echo "=== " . $title . " ===\n";
+    echo str_repeat("=", 80) . "\n";
     
     if (empty($comments)) {
         echo "Aucun commentaire pour le moment.\n";
-        return;
-    }
-    
-    echo "=== DERNIERS COMMENTAIRES ===\n";
-    echo str_repeat("=", 80) . "\n";
-    
-    foreach ($comments as $comment) {
-        echo "[" . $comment->getCreatedAt() . "] " . 
-             substr($comment->getContenu(), 0, 60) . 
-             (strlen($comment->getContenu()) > 60 ? "..." : "") . "\n";
+    } else {
+        foreach ($comments as $comment) {
+            $approuve = $comment->getApprouve() ? "✓" : "✗";
+            echo "[$approuve][" . $comment->getCreatedAt() . "] " . 
+                 substr($comment->getContenu(), 0, 60) . 
+                 (strlen($comment->getContenu()) > 60 ? "..." : "") . "\n";
+        }
     }
     echo str_repeat("=", 80) . "\n";
     echo "Total: " . count($comments) . " commentaire(s)\n\n";
+}
+
+function displayCommentsEnAttente() {
+    $collection = Collection::getInstance();
+    $comments = $collection->getCommentsEnAttente();
+    
+    echo "=== COMMENTAIRES EN ATTENTE D'APPROBATION ===\n";
+    echo str_repeat("=", 80) . "\n";
+    
+    if (empty($comments)) {
+        echo "Aucun commentaire en attente.\n";
+    } else {
+        foreach ($comments as $comment) {
+            echo "ID: " . $comment->getId() . " - " . 
+                 substr($comment->getContenu(), 0, 50) . 
+                 (strlen($comment->getContenu()) > 50 ? "..." : "") . 
+                 " [" . $comment->getCreatedAt() . "]\n";
+        }
+    }
+    echo str_repeat("=", 80) . "\n";
+    echo "Total: " . count($comments) . " commentaire(s) en attente\n\n";
+}
+
+// Fonction pour afficher l'arbre des catégories
+function displayArbreCategories() {
+    $collection = Collection::getInstance();
+    $collection->displayArbreCategories();
 }
 ?>
